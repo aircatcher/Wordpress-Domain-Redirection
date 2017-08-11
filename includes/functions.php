@@ -22,22 +22,35 @@
 add_action( 'add_meta_boxes', 'kreacio_redirection_meta_box' );
 function kreacio_redirection_meta_box($post)
 {
-   add_meta_box('meta_box_id', 'Kreacio Redirection', 'kreacio_redirection_element_grid_meta_box', $post->post_type, 'normal' , 'high');
+   add_meta_box('meta_box_id', 'Kreacio Redirection', 'kreacio_redirection_meta_box_content', $post->post_type, 'normal' , 'high');
 }
 
-add_action('save_post', 'kreacio_redirection_save_meta_box_data');
+add_action('save_post', array($this, 'kreacio_redirection_save_meta_box_data'));
 function kreacio_redirection_save_meta_box_data()
-{ 
-   global $post;
-   if(isset($_POST["r_country_code"]))
-   {
-      //UPDATE:
-      $meta_element = $_POST['r_country_code'];
-      //END OF UPDATE
+{
+   // Verify this came from the our screen and with proper authorization,
+      // because save_post can be triggered at other times
+      if ( !wp_verify_nonce( $_POST['blc_nonce'], plugin_basename(__FILE__) )) {
+        return $post_id;
+      }
 
-      update_post_meta($post->ID, 'kreacio_redirection_element_grid_meta_box', $meta_element);
-      //print_r($_POST);
-   }
+      // Verify if this is an auto save routine. If it is our form has not been submitted, so we dont want
+      // to do anything
+      if ( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) 
+        return $post_id;
+
+
+      // Check permissions to edit pages and/or posts
+      if ( 'page' == $_POST['ipr'] ||  'post' == $_POST['ipr']) {
+        if ( !current_user_can( 'edit_page', $post_id ) || !current_user_can( 'edit_post', $post_id ))
+          return $post_id;
+      } 
+
+      // OK, we're authenticated: we need to find and save the data
+      $blc = $_POST['backlink_url'];
+
+      // save data in INVISIBLE custom field (note the "_" prefixing the custom fields' name
+      update_post_meta($post_id, '_backlink_url', $blc); 
 }
 
 function readCSV($csvFile)
@@ -50,16 +63,17 @@ function readCSV($csvFile)
     return $line_of_text;
 }
 
-function kreacio_redirection_element_grid_meta_box($post)
+function kreacio_redirection_meta_box_content($post)
 {
 	/** MaxMind GEO IP **/
 	if (!function_exists('geoip_open')) require_once 'geoip.inc.php';
 
 	$gi = geoip_open(dirname(__DIR__).'/includes/GeoIP.dat', GEOIP_STANDARD);
+	// $ip = $_SERVER['REMOTE_ADDR']?:($_SERVER['HTTP_X_FORWARDED_FOR']?:$_SERVER['HTTP_CLIENT_IP']);
 	$ip = $_SERVER['REMOTE_ADDR'];
-
-	$json = file_get_contents("http://ipinfo.io/{$ip}");
-    $details = json_decode($json);
+	
+	// $json = file_get_contents("http://ipinfo.io/{$ip}");
+ 	// $details = json_decode($json);
 
 	$preselect_country = geoip_country_name_by_addr($gi, $ip);  
 
@@ -68,25 +82,21 @@ function kreacio_redirection_element_grid_meta_box($post)
 
 	geoip_close($gi);
 
-    $meta_element = get_post_meta($post->ID,
+	wp_nonce_field( plugin_basename( __FILE__ ), 'blc_nonce' );
+  $meta_element = get_post_meta($post->ID,
                   'kreacio_redirection_element_grid_meta_box', true); //true ensures you get just one value instead of an array
-    // $country_list = array_map('str_getcsv', file(dirname(__DIR__).'/includes/GeoIPCountry.csv'));
-    $csvFile = dirname(__DIR__).'/includes/GeoIPCountry.csv';
-    $countries = readCSV($csvFile);
+  // $country_list = array_map('str_getcsv', file(dirname(__DIR__).'/includes/GeoIPCountry.csv'));
+  $csvFile = dirname(__DIR__).'/includes/GeoIPCountry.csv';
+  $countries = readCSV($csvFile);
 	// echo '<pre>';
 	// print_r($countries);
 	// echo '</pre>';
 
 	list($country_id, $country_name) = $countries;
-    ?>
+	?>
 
     <form action="functions.php" method="POST">
-	    <table id="kr_table_layout">
-	    	<tr>
-	    		<td>Whois </td>
-	    		<td><?php echo $countries[1][1], " ( ",$ip," )"; ?></td>
-	    		<td><font size="1.5 em"><i>Your IP details</i></font></td>
-	    	</tr>
+	  	<table id="kr_table_layout">
 	    	<tr>
 	    		<td>Choose country </td>
 	    		<td>
@@ -96,7 +106,8 @@ function kreacio_redirection_element_grid_meta_box($post)
 					    $i = 0;
 					    foreach($countries as $country)
 						{ ?>
-							<option value="<? echo $countries[$i][0] ?>"<?php selected($meta_element, '<?php echo $countries[$i][0] ?>'); ?>>
+							if()
+							<option value="<? echo $countries[$i][0] ?>"<?php selected($meta_element, '<?php echo $countries[100][0]; ?>'); ?>>
 								<?php echo $countries[$i][1]; ?>
 							</option>
 						<?php $i++;
@@ -109,7 +120,15 @@ function kreacio_redirection_element_grid_meta_box($post)
 	    		<td><input type="URL" id="target_url_box" placeholder="http://www.TargetURL.com/" required/></td>
 	    	</tr>
 	    </table>
-	</form>
+		</form>
+		<?php
+		if($preselect_country == r_country_code)
+		{
+			$targetURL = $_POST['subject'];
+			header("Location: ", $targetURL);
+			die();
+		}
+		?>
 
     <br/><br/>
     <font size="1.5 em"><i>This product includes GeoLite data created by MaxMind, available from</i>
