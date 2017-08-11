@@ -11,18 +11,7 @@
  **/
 
 require 'vendor/autoload.php';
-
-/*****settings options****/
-// function kreacio_redirection_cp_settings_page()
-	// require plugin_dir_path(__FILE__) . 'includes/options.php';
-	require plugin_dir_path(__FILE__) . 'includes/functions.php';
-
-if ( ! defined( 'ABSPATH' ) )
-{
-	header( 'Status: 403 Forbidden' );
-	header( 'HTTP/1.1 403 Forbidden' );
-	exit;
-}
+require plugin_dir_path(__FILE__) . 'includes/functions.php';
 
 add_action('admin_menu', 'kreacio_redirection_cp_create_menu');
 function kreacio_redirection_cp_create_menu()
@@ -87,6 +76,12 @@ function kreacio_redirection_cp_deactivate()
    $table_name = "kreacio_redirection_cp_rule";
    $sql        = "DROP TABLE IF EXISTS $table_name;";
    $wpdb->query($sql);
-   
 }
 register_deactivation_hook(__FILE__, 'kreacio_redirection_cp_deactivate');
+
+if ( ! defined( 'ABSPATH' ) )
+{
+   header( 'Status: 403 Forbidden' );
+   header( 'HTTP/1.1 403 Forbidden' );
+   exit;
+}
