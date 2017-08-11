@@ -101,17 +101,24 @@ function kreacio_redirection_meta_box_content($post)
 	    		<td>Choose country </td>
 	    		<td>
 	    			<select name="r_country_code" id="r_country_code">
-				    	<option value ="" <?php selected( $meta_element, '' ); ?>>-- Default Redirection --</option>
+				    	<option value ="" <?php selected( $meta_element, '' ); ?>>DEFAULT REDIRECTION</option>
 					    <?php
-					    $i = 0;
-					    foreach($countries as $country)
-						{ ?>
-							if()
-							<option value="<? echo $countries[$i][0] ?>"<?php selected($meta_element, '<?php echo $countries[100][0]; ?>'); ?>>
-								<?php echo $countries[$i][1]; ?>
-							</option>
-						<?php $i++;
-						} ?>
+						    $i = 0;
+						    foreach($countries as $country)
+								{ ?>
+									<option value="<? echo $countries[$i][0] ?>"
+										<?php selected($meta_element, '<?php echo $countries[100][0]; ?>'); ?>
+										<?php if($i <= 2) { ?> style="text-transform: uppercase;" <?php } ?>>
+											<?php echo $countries[$i][1]; ?>
+									</option>
+									<?php if($i == 2)
+									{ ?>
+										<option value ="" <?php selected( $meta_element, '' ); ?> disabled>
+											------------------- Countries -------------------
+										</option>
+									<?php } ?>
+									<?php $i++;
+								} ?>
 			    	</select>
 	    		</td>
 	    	</tr>
@@ -133,5 +140,5 @@ function kreacio_redirection_meta_box_content($post)
     <br/><br/>
     <font size="1.5 em"><i>This product includes GeoLite data created by MaxMind, available from</i>
     <a href="http://www.maxmind.com" target="_blank">http://www.maxmind.com</a></font>
-    <?php 
+<?php
 }
