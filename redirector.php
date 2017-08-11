@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: Kreacio IP Redirector (Custom Post)
+ * Plugin Name: Kreacio Redirection
  * Author: Kreacio
  * Author URI: http://kreaciomedia.com
- * Description: This plugin redirects visitors to the specified URL based on their country.
+ * Description: Redirects visitors to the specified URL based on their country.
  * Tags: page redirection, URL Redirection, 301 redirection plugin, 404, IP redirection ,Geo IP redirect, location redirect, post redirection plugin
  * Version: 1.0
  * License: GPLv2 or later
@@ -11,7 +11,8 @@
  **/
 
 require 'vendor/autoload.php';
-require plugin_dir_path(__FILE__) . 'includes/functions.php';
+require 'includes/functions.php';
+// require plugin_dir_path(__FILE__) . 'includes/functions.php';
 
 add_action('admin_menu', 'kreacio_redirection_cp_create_menu');
 function kreacio_redirection_cp_create_menu()
