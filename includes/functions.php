@@ -50,7 +50,6 @@ function kreacio_redirection_meta_box_cb($post)
 
 	/** MaxMind GEO IP **/
 	if (!function_exists('geoip_open')) require_once 'geoip.inc.php';
-
 	$ipAddr = $_SERVER['REMOTE_ADDR'];
 	$mmdb   = __DIR__. '/' .'MaxMind/DB/GeoLite2-Country.mmdb';
 	$reader = new Reader($mmdb);
