@@ -10,7 +10,6 @@
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  **/
 
-require 'vendor/autoload.php';
 require 'includes/functions.php';
 // require plugin_dir_path(__FILE__) . 'includes/functions.php';
 
@@ -42,17 +41,17 @@ function kreacio_redirection_cp_create_menu()
    );
    register_post_type( 'ipr', $args );
 }
-add_action( 'init', 'kreacio_redirection_cp_create_menu' ); 
+add_action('init', 'kreacio_redirection_cp_create_menu'); 
 
 /*****register settings options****/
 function fn_eip_cp_redirection_register_mysettings()
 {
-   register_setting( 'kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_redirect_provider' );
-   register_setting( 'kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_redirect_api2' );
-   register_setting( 'kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_redirect_api3' );
-   register_setting( 'kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_country' );
-   register_setting( 'kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_ruletype' );
-   register_setting( 'kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_redirect_url' );
+   register_setting('kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_redirect_provider');
+   register_setting('kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_redirect_api2');
+   register_setting('kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_redirect_api3');
+   register_setting('kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_country');
+   register_setting('kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_ruletype');
+   register_setting('kreacio-redirection-cp-settings-group', 'kreacio-redirection-cp_redirect_url');
 }
 
 function kreacio_redirection_cp_activate() 
@@ -80,9 +79,15 @@ function kreacio_redirection_cp_deactivate()
 }
 register_deactivation_hook(__FILE__, 'kreacio_redirection_cp_deactivate');
 
-if ( ! defined( 'ABSPATH' ) )
+// function tl_save_error() {
+//     update_option( 'plugin_error',  ob_get_contents() );
+// }
+// add_action( 'activated_plugin', 'tl_save_error' );
+// echo get_option( 'plugin_error' );
+
+if (!defined( 'ABSPATH'))
 {
-   header( 'Status: 403 Forbidden' );
-   header( 'HTTP/1.1 403 Forbidden' );
+   header('Status: 403 Forbidden');
+   header('HTTP/1.1 403 Forbidden');
    exit;
 }

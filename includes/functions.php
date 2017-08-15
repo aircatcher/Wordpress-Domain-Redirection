@@ -15,6 +15,13 @@
 
 <?php
 # @package: Custom IP Redirect
+require_once dirname(__DIR__) . '/' . 'vendor/autoload.php';
+require_once __DIR__ . '/' . 'MaxMind/Db/Reader.php';
+require_once __DIR__ . '/' . 'MaxMind/Db/Reader/Decoder.php';
+require_once __DIR__ . '/' . 'MaxMind/Db/Reader/InvalidDatabaseException.php';
+require_once __DIR__ . '/' . 'MaxMind/Db/Reader/Metadata.php';
+require_once __DIR__ . '/' . 'MaxMind/Db/Reader/Util.php';
+use MaxMind\Db\Reader;
 
 /**
 *  Kreacio Redirection Meta Box
@@ -22,35 +29,7 @@
 add_action( 'add_meta_boxes', 'kreacio_redirection_meta_box' );
 function kreacio_redirection_meta_box($post)
 {
-   add_meta_box('meta_box_id', 'Kreacio Redirection', 'kreacio_redirection_meta_box_content', $post->post_type, 'normal' , 'high');
-}
-
-add_action('save_post', array($this, 'kreacio_redirection_save_meta_box_data'));
-function kreacio_redirection_save_meta_box_data()
-{
-   // Verify this came from the our screen and with proper authorization,
-      // because save_post can be triggered at other times
-      if ( !wp_verify_nonce( $_POST['blc_nonce'], plugin_basename(__FILE__) )) {
-        return $post_id;
-      }
-
-      // Verify if this is an auto save routine. If it is our form has not been submitted, so we dont want
-      // to do anything
-      if ( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) 
-        return $post_id;
-
-
-      // Check permissions to edit pages and/or posts
-      if ( 'page' == $_POST['ipr'] ||  'post' == $_POST['ipr']) {
-        if ( !current_user_can( 'edit_page', $post_id ) || !current_user_can( 'edit_post', $post_id ))
-          return $post_id;
-      } 
-
-      // OK, we're authenticated: we need to find and save the data
-      $blc = $_POST['backlink_url'];
-
-      // save data in INVISIBLE custom field (note the "_" prefixing the custom fields' name
-      update_post_meta($post_id, '_backlink_url', $blc); 
+   add_meta_box('meta_box_id', 'Kreacio Redirection', 'kreacio_redirection_meta_box_cb', $post->post_type, 'normal' , 'high');
 }
 
 function readCSV($csvFile)
@@ -63,82 +42,112 @@ function readCSV($csvFile)
     return $line_of_text;
 }
 
-function kreacio_redirection_meta_box_content($post)
+function kreacio_redirection_meta_box_cb($post)
 {
+	wp_nonce_field( plugin_basename( __FILE__ ), 'meta_box_nonce' );
+	$meta_dropdown = get_post_meta($post->ID, 'r_country_code', true); //true ensures you get just one value instead of an array
+	$meta_target = get_post_meta( $post->ID, 'target_url', true );
+
 	/** MaxMind GEO IP **/
 	if (!function_exists('geoip_open')) require_once 'geoip.inc.php';
 
-	$gi = geoip_open(dirname(__DIR__).'/includes/GeoIP.dat', GEOIP_STANDARD);
-	// $ip = $_SERVER['REMOTE_ADDR']?:($_SERVER['HTTP_X_FORWARDED_FOR']?:$_SERVER['HTTP_CLIENT_IP']);
-	$ip = $_SERVER['REMOTE_ADDR'];
-	
-	// $json = file_get_contents("http://ipinfo.io/{$ip}");
- 	// $details = json_decode($json);
+	$ipAddr = $_SERVER['REMOTE_ADDR'];
+	$mmdb   = __DIR__. '/' .'MaxMind/DB/GeoLite2-Country.mmdb';
+	$reader = new Reader($mmdb);
+	$ipData = $reader->get($ipAddr);
 
-	$preselect_country = geoip_country_name_by_addr($gi, $ip);  
+	// $record = $reader->country($ipAddr)->isoCode;
+	// echo '<pre>';
+	// print_r($record->get($ipAddr));
+	// echo '</pre>';
+	$reader->close();
 
-	echo geoip_country_code_by_addr($gi, "80.24.24.24") . "\t" .
-	     geoip_country_name_by_addr($gi, "80.24.24.24") . "\n";
+	// $gi = geoip_open(dirname(__DIR__).'/includes/GeoLiteCountry.dat', GEOIP_STANDARD);
+	// // $ip = $_SERVER['REMOTE_ADDR']?:($_SERVER['HTTP_X_FORWARDED_FOR']?:$_SERVER['HTTP_CLIENT_IP']);
+	// $ip = $_SERVER['REMOTE_ADDR'];
+	// $record = geoip_country_code_by_addr($gi, $ip);
+	// geoip_close($gi);
 
-	geoip_close($gi);
-
-	wp_nonce_field( plugin_basename( __FILE__ ), 'blc_nonce' );
-  $meta_element = get_post_meta($post->ID,
-                  'kreacio_redirection_element_grid_meta_box', true); //true ensures you get just one value instead of an array
-  // $country_list = array_map('str_getcsv', file(dirname(__DIR__).'/includes/GeoIPCountry.csv'));
-  $csvFile = dirname(__DIR__).'/includes/GeoIPCountry.csv';
-  $countries = readCSV($csvFile);
+	// $country_list = array_map('str_getcsv', file(dirname(__DIR__).'/includes/GeoIPCountry.csv'));
+	$csvFile = dirname(__DIR__).'/includes/GeoIPCountry.csv';
+	$countries = readCSV($csvFile);
 	// echo '<pre>';
 	// print_r($countries);
 	// echo '</pre>';
 
 	list($country_id, $country_name) = $countries;
-	?>
-
-    <form action="functions.php" method="POST">
+	?><form action="functions.php" method="POST">
 	  	<table id="kr_table_layout">
 	    	<tr>
 	    		<td>Choose country </td>
-	    		<td>
+	    		<td> :
 	    			<select name="r_country_code" id="r_country_code">
-				    	<option value ="" <?php selected( $meta_element, '' ); ?>>DEFAULT REDIRECTION</option>
+				    	<option value ="" <?php selected( $meta_dropdown, '' ); ?>>DEFAULT REDIRECTION</option>
 					    <?php
 						    $i = 0;
 						    foreach($countries as $country)
-								{ ?>
-									<option value="<? echo $countries[$i][0] ?>"
-										<?php selected($meta_element, '<?php echo $countries[100][0]; ?>'); ?>
-										<?php if($i <= 2) { ?> style="text-transform: uppercase;" <?php } ?>>
-											<?php echo $countries[$i][1]; ?>
+							{ ?><option value="<? echo $countries[$i][0] ?>"
+									<?php selected($meta_dropdown, '<?php echo $countries[100][0]; ?>'); ?>
+									<?php if($i <= 2) { ?> style="text-transform: uppercase;" <?php } ?>>
+									<?php echo $countries[$i][1]; ?>
+								</option>
+								<?php if($i == 2)
+								{
+									?>
+									<option value ="" <?php selected( $meta_dropdown, '' ); ?> disabled>
+									------------------- Countries -------------------
 									</option>
-									<?php if($i == 2)
-									{ ?>
-										<option value ="" <?php selected( $meta_element, '' ); ?> disabled>
-											------------------- Countries -------------------
-										</option>
-									<?php } ?>
-									<?php $i++;
-								} ?>
+									<?php
+								} ?><?php $i++;
+							} ?>
 			    	</select>
 	    		</td>
 	    	</tr>
 	    	<tr>
 	    		<td>Target URL </td>
-	    		<td><input type="URL" id="target_url_box" placeholder="http://www.TargetURL.com/" required/></td>
+	    		<td>: <input type="URL" id="target_url_box" name="target_url" placeholder="http://www.TargetURL.com/" value="<?php echo $meta_target; ?>" required/></td>
 	    	</tr>
 	    </table>
 		</form>
-		<?php
-		if($preselect_country == r_country_code)
-		{
-			$targetURL = $_POST['subject'];
-			header("Location: ", $targetURL);
-			die();
-		}
-		?>
 
-    <br/><br/>
+		<br/>
     <font size="1.5 em"><i>This product includes GeoLite data created by MaxMind, available from</i>
     <a href="http://www.maxmind.com" target="_blank">http://www.maxmind.com</a></font>
-<?php
+		<br/><br/>
+		<?php
+		if($record == $_POST['r_country_code'])
+		{
+			$targetURL = $_POST['target_url'];
+			function Redirect($targetURL, $statusCode = 303)
+			{
+				if (headers_sent()) die("<font color='RED'><b>ERROR:</b> Header is already sent</font>");
+				else exit(header('Location: ' . $targetURL, true, $statusCode));
+			}
+			Redirect('http://www.google.com/', false);
+		}
+}
+
+add_action('save_post', 'kreacio_redirection_save_meta_box_data', 1, 2);
+// add_action('save_post', array($this, 'kreacio_redirection_save_meta_box_data'));
+function kreacio_redirection_save_meta_box_data($post_id)
+{
+   	//1. verifies meta box nonce (to prevent CSRF attacks)
+    if( !isset( $_POST['meta_box_nonce'] ) || !wp_verify_nonce( $_POST['meta_box_nonce'], basename( __FILE__ ) ) )
+      return;
+
+    //2. if autosaves
+    if( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE )
+      return;
+    
+    //3. if user's not admin
+    if( !current_user_can( 'edit_post', $post_id ) )
+      return;
+    elseif ( !current_user_can ( 'edit_page', $post_id) )
+      return;
+    
+    //4. checks all custom field values (see 'create_work_meta()' function)
+    if( isset( $_REQUEST['meta_dropdown'] ) )
+        update_post_meta( $post_id, 'meta_dropdown', sanitize_text_field( $_POST['meta_dropdown'] ) );
+    if( isset( $_REQUEST['meta_target'] ) )
+        update_post_meta( $post_id, 'meta_target', sanitize_text_field( $_POST['meta_target'] ) );
 }
