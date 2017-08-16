@@ -28,7 +28,7 @@ function kreacio_redirection_cp_create_menu()
    );
    register_post_type( 'ipr', $args );
 }
-add_action('init', 'kreacio_redirection_cp_create_menu'); 
+add_action('init', 'kreacio_redirection_cp_create_menu');
 
 /*****register settings options****/
 function fn_eip_cp_redirection_register_mysettings()
@@ -44,7 +44,7 @@ function fn_eip_cp_redirection_register_mysettings()
 function kreacio_redirection_cp_activate() 
 {
    global $wpdb;
-   $table_name = "kreacio_redirection_cp_rule";   
+   $table_name = "cp_rule";   
    $sql =   "CREATE TABLE  $table_name (
             `ID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY ,
             `country_code` VARCHAR( 10 ) NOT NULL ,
@@ -53,13 +53,14 @@ function kreacio_redirection_cp_activate()
             `url` TEXT NOT NULL
             );";
    $wpdb->query($sql);
+   file_put_contents( dirname(__DIR__) . '/my_loggg.txt', ob_get_contents() );
 }
 register_activation_hook(__FILE__, 'kreacio_redirection_cp_activate');
 
 function kreacio_redirection_cp_deactivate() 
 {
    global $wpdb;
-   $table_name = "kreacio_redirection_cp_rule";
+   $table_name = "cp_rule";
    $sql        = "DROP TABLE IF EXISTS $table_name;";
    $wpdb->query($sql);
 }

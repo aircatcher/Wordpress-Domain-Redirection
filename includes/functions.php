@@ -1,29 +1,14 @@
-<style>
-	#meta_box_css
-	{
-		font-size: 14.5px;
-	}
-	#target_url_box
-	{
-		position: relative;
-		top: 2px;
-		height: 28px;
-		width: 317px;
-	}
-	#meta_box_css tr
-	{
-		position: relative;
-		height: 5px !important;
-	}
-	#red_notice
-	{
-		color: #FA5A5A;
-	}
-</style>
 <?php
 # @package: Custom IP Redirect
 require_once dirname(__DIR__). '/' . 'vendor/autoload.php';
 use MaxMind\Db\Reader;
+
+add_action('wp_enqueue_style', 'register_styles');
+function register_styles()
+{
+    wp_register_style('my-stylesheet', plugin_url('/css/style.css'));
+    wp_enqueue_style ('my-stylesheet');
+}
 
 /**
 *  Kreacio Redirection Meta Box
@@ -33,7 +18,7 @@ function read_CSV($csv_file)
   $file_handle = fopen($csv_file, 'r');
   while (!feof($file_handle))
   {
-  	$line_of_text[] = fgetcsv($file_handle, 1024);
+  	$line_of_text[] = fgetcsv($file_handle, 512);
   }
   fclose($file_handle);
   return $line_of_text;
@@ -43,24 +28,46 @@ add_action('add_meta_boxes', 'kr_meta_box');
 function kr_meta_box($post)
 {
   add_meta_box(
-		'kr_meta_box',
+		'meta_box_id',
 		'Kreacio Redirection',
 		'kr_meta_box_cb',
-		'ipr',
+		$post->post_type,
 		'normal',
-		'high' );
+		'high');
+}
+add_action('save_post', 'kreacio_redirection_save');
+function kreacio_redirection_save()
+{
+	global $post;
+  if(isset($_POST["r_country_code"]))
+  {
+    //UPDATE: 
+    $meta_dropdown = $_POST['r_country_code'];
+    //END OF UPDATE
+
+    update_post_meta($post->ID, 'kr_meta_box_cb', $meta_dropdown);
+    //print_r($_POST);
+  }
+  if(isset($_POST["target_url"]))
+  {
+    //UPDATE: 
+    $meta_textfield = $_POST['target_url'];
+    //END OF UPDATE
+
+    update_post_meta($post->ID, 'kr_meta_box_cb', $meta_textfield);
+    //print_r($_POST);
+  }
 }
 function kr_meta_box_cb($post)
 {
-	$values = get_post_custom( $post->ID );
-	$text = isset($values['target_url']) ? esc_attr($values['target_url'][0]) : ”;
-	$selected = isset($values['r_country_code']) ? esc_attr($values['r_country_code'][0]) : ”;
+	$meta_dropdown  = get_post_meta($post->ID, 'kr_meta_box_cb', true);
+	$meta_textfield = get_post_meta($post->ID, 'kr_meta_box_cb', true);
 	wp_nonce_field(plugin_basename(__FILE__), 'kreacio_redirection_nonce');
 
 	/** MaxMind GEO IP **/
 	if (!function_exists('geoip_open')) require_once 'geoip.inc.php';
 	$ip_addr = $_SERVER['REMOTE_ADDR'];
-	$mmdb    =  dirname(__DIR__) . '/' . 'vendor/maxmind-db/reader/src/MaxMind/Db/GeoLite2-Country.mmdb';
+	$mmdb    = dirname(__DIR__) . '/' . 'vendor/maxmind-db/reader/src/MaxMind/Db/GeoLite2-Country.mmdb';
 	$reader  = new Reader($mmdb);
 	$ip_info = $reader->get($ip_addr);
 	// $gi = geoip_open(dirname(__DIR__).'/includes/GeoLiteCountry.dat', GEOIP_STANDARD);
@@ -69,12 +76,14 @@ function kr_meta_box_cb($post)
 	// $reader = geoip_country_code_by_addr($gi, $ip);
 	// geoip_close($gi);
 
-	// echo '<pre>';
-	// print_r($reader->get($ip_addr));
-	// echo '</pre>';
-
 	$csv_file = dirname(__DIR__).'/includes/GeoIPCountry.csv';
 	$countries = read_CSV($csv_file);
+
+	// print into <pre>array</pre>
+	// echo '<pre>';
+	// // print_r($reader->get($ip_info));
+	// print_r($countries);
+	// echo '</pre>';
 
 	$value = get_post_meta($post->ID, '_my_meta_value_key', true);
 
@@ -85,18 +94,18 @@ function kr_meta_box_cb($post)
 	echo				'<td id="meta_box_css">Choose country </td>';
 	echo				'<td>: ';
 	echo					'<select name="r_country_code" id="r_country_code">';
-	echo					'<option ' . selected($r_country_code, '') . '>DEFAULT REDIRECTION</option>';
+								?><option <?php selected($meta_dropdown, ''); ?>>DEFAULT REDIRECTION</option><?php
 								$i = 0;
 								foreach($countries as $country)
 								{
-	echo						'<option ' . selected($r_country_code, '<?php echo $countries[100][0]');
+									?><option <?php selected($meta_dropdown, '<?php echo $countries[100][0]; ?>');
 									if($i <= 2) { echo 'style="text-transform: uppercase;"'; }
 	echo						'>';
 	echo						$countries[$i][1];
 	echo						'</option>';
 									if($i == 2)
 									{
-	echo							'<option ' . selected($r_country_code, 'country-heading') . ' disabled>';
+									?><option <?php selected($meta_dropdown, 'country-heading'); ?> disabled><?php
 	echo							'------------------- Countries -------------------</option>';
 									}
 									$i++;
@@ -106,18 +115,16 @@ function kr_meta_box_cb($post)
 	echo			'</tr>';
 	echo			'<tr>';
 	echo				'<td id="meta_box_css">Target URL </td>';
-	echo				'<td>: <input type="URL" id="target_url_box" name="target_url" placeholder="http://www.TargetURL.com/" required>';
-	echo								$target_url . '</input></td>';
+	echo				'<td>: <input type="URL" id="target_url_box" name="target_url" placeholder="http://www.TargetURL.com/" value="'. $meta_textfield .'" required/></td>';
 	echo			'</tr>';
 	echo		'</table>';
 	echo	'</form>';
 
 	echo	'<br/>';
 				if($ip_addr == '::1' || $ip_addr == '127.0.0.1')
-					echo '<i id="red_notice"><b>Notice:</b> Geolocation is not possible within localhost</i></font><br/><br/>';
-	echo	'<font size="2px"><i>This product includes GeoLite data created by MaxMind, available from</i>
-				<a href="http://www.maxmind.com" target="_blank">http://www.maxmind.com</a></font>';
-	echo	'<pre>' . $ip_info . '</pre>';
+	echo 		'<i id="red_notice"><b>Notice:</b> Geolocation is not possible within localhost</i></font><br/><br/>';
+	echo		'<font size="2px"><i>This product includes GeoLite data created by MaxMind, available from </i><a href="http://www.maxmind.com" target="_blank">http://www.maxmind.com</a></font>';
+	// echo	'<pre>' . $ip_info . '</pre>';
 
 				if($reader == $_POST['r_country_code'])
 				{
@@ -131,25 +138,4 @@ function kr_meta_box_cb($post)
 				}
 
 	$reader->close();
-}
-
-add_action('save_post', 'kreacio_redirection_save', 10, 1);
-function kreacio_redirection_save($post_id)
-{
-	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
-    return;
-
-    if ( !wp_verify_nonce( $_POST['kreacio_redirection_nonce'], plugin_basename( __FILE__ ) ) )
-    return;
-
-  	if ( 'ipr' !== $post->post_type )        
-    	return;
-
-		if ( !current_user_can( 'edit_post' ) )
-	    return;
-
-    $r_country_code = $_POST['r_country_code'];
-    update_post_meta($post_id, 'r_country_code', $r_country_code);
-    $target_url = $_POST['target_url'];
-    update_post_meta($post_id, 'target_url', $target_url);
 }

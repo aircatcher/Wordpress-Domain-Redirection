@@ -1,0 +1,22 @@
+<style>
+	#meta_box_css
+	{
+		font-size: 14.5px;
+	}
+	#target_url_box
+	{
+		position: relative;
+		top: 2px;
+		height: 28px;
+		width: 317px;
+	}
+	#meta_box_css tr
+	{
+		position: relative;
+		height: 5px !important;
+	}
+	#red_notice
+	{
+		color: #FA5A5A;
+	}
+</style>
