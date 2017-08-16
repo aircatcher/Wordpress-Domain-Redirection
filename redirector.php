@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: Test
- * Author: Test
+ * Plugin Name: Kreacio Redirection
+ * Author: Kreacio
  * Author URI: http://kreaciomedia.com
  * Description: Redirects visitors to the specified URL based on their country.
  * Tags: page redirection, URL Redirection, 301 redirection plugin, 404, IP redirection ,Geo IP redirect, location redirect, post redirection plugin
