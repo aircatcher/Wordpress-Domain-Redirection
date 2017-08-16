@@ -1,7 +1,6 @@
 <?php
 # @package: Custom IP Redirect
-require_once dirname(__DIR__). '/' . 'vendor/autoload.php';
-use MaxMind\Db\Reader;
+// require_once dirname(__DIR__). '/' . 'includes/autoload.php';
 
 add_action('wp_enqueue_style', 'register_styles');
 function register_styles()
@@ -15,13 +14,22 @@ function register_styles()
 **/
 function read_CSV($csv_file)
 {
-  $file_handle = fopen($csv_file, 'r');
-  while (!feof($file_handle))
-  {
-  	$line_of_text[] = fgetcsv($file_handle, 512);
-  }
-  fclose($file_handle);
-  return $line_of_text;
+  $row = 1;
+  $csv_file = dirname(__DIR__).'/includes/GeoIPCountry.csv';
+	if (($handle = fopen($csv_file, "r")) !== FALSE)
+	{
+		while (($data = fgetcsv($handle, 1000, ",")) !== FALSE)
+		{
+			$num = count($data);
+			echo "<p> $num fields in line $row: <br /></p>\n";
+	    $row++;
+	    for ($c=0; $c < $num; $c++)
+	    {
+	      echo $data[$c] . "<br />\n";
+	    }
+	  }
+	  fclose($handle);
+	}
 }
 
 add_action('add_meta_boxes', 'kr_meta_box');
@@ -67,7 +75,7 @@ function kr_meta_box_cb($post)
 	/** MaxMind GEO IP **/
 	if (!function_exists('geoip_open')) require_once 'geoip.inc.php';
 	$ip_addr = $_SERVER['REMOTE_ADDR'];
-	$mmdb    = dirname(__DIR__) . '/' . 'vendor/maxmind-db/reader/src/MaxMind/Db/GeoLite2-Country.mmdb';
+	$mmdb    = dirname(__DIR__) . '/' . 'includes/GeoLite2-Country.mmdb';
 	$reader  = new Reader($mmdb);
 	$ip_info = $reader->get($ip_addr);
 	// $gi = geoip_open(dirname(__DIR__).'/includes/GeoLiteCountry.dat', GEOIP_STANDARD);
@@ -76,8 +84,8 @@ function kr_meta_box_cb($post)
 	// $reader = geoip_country_code_by_addr($gi, $ip);
 	// geoip_close($gi);
 
-	$csv_file = dirname(__DIR__).'/includes/GeoIPCountry.csv';
-	$countries = read_CSV($csv_file);
+	// $csv_file = dirname(__DIR__).'/includes/GeoIPCountry.csv';
+	$countries = read_CSV();
 
 	// print into <pre>array</pre>
 	// echo '<pre>';
