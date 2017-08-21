@@ -11,3 +11,11 @@
  **/
 
 require 'includes/functions.php';
+
+function _sprintf($array){
+	echo sprintf('<pre>%s</pre>', print_r($array, true));
+}
+
+$args = array( 'post_type' => 'kred', );
+$query = new WP_Query( array( $args ) );
+_sprintf( $query );
