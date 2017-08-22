@@ -5,14 +5,6 @@ ob_clean(); ob_start();
 require dirname(__DIR__)  . '/vendor/autoload.php';
 include dirname(__FILE__) . '/geoipcity.inc';
 include dirname(__FILE__) . '/geoipregionvars.php';
-// use MaxMind\Db\Reader;
-
-// add_action( 'wp_enqueue_style', 'register_styles' );
-// function register_styles()
-// {
-//     wp_register_style( 'my-stylesheet', plugin_url('/css/style.css') );
-//     wp_enqueue_style ( 'my-stylesheet' );
-// }
 
 function _sprintf($array){
 	echo sprintf('<pre>%s</pre>', print_r($array, true));
