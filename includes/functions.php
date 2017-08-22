@@ -14,76 +14,114 @@ include dirname(__FILE__) . '/geoipregionvars.php';
 //     wp_enqueue_style ( 'my-stylesheet' );
 // }
 
-$kreacio_redirection = new Kreacio_Redirection();
-function is_user_logged_in() {
-	$user = wp_get_current_user();
-
-	if ( empty( $user->ID ) ) return false;
-	return true;
-}
-
-if(!function_exists('wp_get_current_user')) {
-    include(ABSPATH . "wp-includes/pluggable.php"); 
+function _sprintf($array){
+	echo sprintf('<pre>%s</pre>', print_r($array, true));
 }
 
 class Kreacio_Redirection
 {
-	private $mode = 0;
-	public $meta_target_url = '';
+	private $mode = 1;
+
 	public $meta_id		= 'meta_box_id';
 	public $meta_title	= 'Kreacio Redirection';
 	protected $post_type  = 'kred';
-	public $callback	  = 'meta_box_callback';
+	public $content	  = 'meta_box_content';
 	public $meta_position = 'normal';
 	public $meta_priority = 'high';
+
+	static $currentURL;
+	static $country_list, $target_url;
+	static $c_id, $c_name, $ip, $countries;
 	
 	function __construct()
 	{
-		add_action( 'init', array($this, 'meta_box_custom_post') );
+		add_action( 'init', array($this, 'custom_post') );
 		add_action( 'add_meta_boxes', array($this, 'meta_box') );
 		add_action( 'save_post', array($this, 'meta_box_save') );
+	}
 
-		// Check Client IP
-		if ( !empty($_SERVER['HTTP_CLIENT_IP']) ) $ip = $_SERVER['HTTP_CLIENT_IP'];	// Client IP
-		elseif ( !empty($_SERVER['HTTP_X_FORWARDED_FOR']) ) $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];	// VPN
-		else $ip = $_SERVER['REMOTE_ADDR'];	// Admin
+	function check_ip()
+	{
+		Kreacio_Redirection::$ip = $_SERVER['REMOTE_ADDR'];
+	}
 
+	function maxmind_geo($ip)
+	{
 		$geoPath = dirname(__FILE__).'/GeoIP.dat' ;
 		$gi = geoip_open( $geoPath, GEOIP_STANDARD );
-		if($ip == '::1' || $ip == '127.0.0.1') {
-			$c_id   = 'localhost';
-			$c_name = 'localhost';
-		} else {
-			$c_id   = geoip_country_code_by_addr($gi, $ip);
-			$c_name = geoip_country_name_by_addr($gi, $ip);
-		}
+
+		Kreacio_Redirection::$c_id 	 = geoip_country_code_by_addr($gi, Kreacio_Redirection::$ip);
+		Kreacio_Redirection::$c_name = geoip_country_name_by_addr($gi, Kreacio_Redirection::$ip);
+
 		geoip_close($gi);
-
-		$countries = array_map('str_getcsv', file(dirname(__FILE__).'/GeoIPCountry.csv'));
-		list($country_id, $country_name) = $countries;
-		
-		$url = $_SERVER['HTTP_HOST'].$_SERVER['PHP_SELF']; // 'http://'.
-		$explodeURL = explode("/", $url);
-		$explodeDomain = explode(".", $url);
-		
-		//$query = new WP_Query( array(  ) );
-		//$args = array(
-		//		'post_type' => 'kred'
-		//	);
-		//$qquery = new WP_Query($args);
-		//_sprintf($qquery);
-
-		if( !( in_array("wp-login.php", $explodeURL) || in_array("wp-admin", $explodeURL) ) )
-		{
-			if( $c_id == "ID" )
-			{
-				if( strpos($_SERVER['HTTP_HOST'], 'com') !== false ){
-					//header("Location: http://" . $explodeDomain[0] . "." . $explodeDomain[1] . ".co.id" . "/wordpress"); die();
-				}
-			}
-		}
 	}
-	function meta_box_custom_post()
+
+	function read_csv()
+	{
+		Kreacio_Redirection::$countries = array_map('str_getcsv', file(dirname(__FILE__).'/GeoIPCountry.csv'));
+		list($country_id, $country_name) = Kreacio_Redirection::$countries;
+	}
+
+	function content($countries)
+	{
+		wp_nonce_field( basename( __FILE__ ), 'meta_box_nonce' ); ?>
+		<table>
+			<tr>
+				<td><label for="country_list">Country</label></td>
+				<td> : 
+					<select name="country_list" id="country_list">
+						<option value=''<?php selected( Kreacio_Redirection::$country_list, '' ); ?>>Default Redirection</option>
+						<?php foreach( Kreacio_Redirection::$countries as $country ) :
+									$selected = (Kreacio_Redirection::$country_list == $country[0]) ? "selected" : ''; ?>
+						<option value="<?php echo $country[0]; ?>" <?php echo $selected; ?>>
+							<?php echo $country[1];?>
+						</option>
+						<?php endforeach; ?>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td><label for="target_url">Target URL</label></td>
+				<td> : <input type="URL" name="target_url" value="<?php echo Kreacio_Redirection::$target_url; ?>" placeholder="http://www.targeturl.com" style="width:317px"/></td>
+			</tr>
+		</table>
+		<?php if($this->mode == 1) : ?>
+			<br/>
+			<table border="1">
+				<tr>
+					<th colspan='2'>TEMP (change $mode to 1)</th>
+				</tr>
+				<tr>
+					<td>IP</td>
+					<td><?php echo Kreacio_Redirection::$ip; ?></td>
+				</tr>
+				<?php if(Kreacio_Redirection::$ip !== '::1') : ?>
+				<tr>
+					<td>Country ID / Name</td>
+					<td><?php echo Kreacio_Redirection::$c_id . " / " . Kreacio_Redirection::$c_name; ?></td>
+				</tr>
+				<?php endif; ?>
+				<tr>
+					<td>HTTP_HOST</td>
+					<td><?php echo $_SERVER['HTTP_HOST']; ?></td>
+				</tr>
+				<tr>
+					<td>PHP_SELF</td>
+					<td><?php echo $_SERVER['PHP_SELF']; ?></td>
+				</tr>
+				<tr>
+					<td>Meta Dropdown</td>
+					<td><?php echo Kreacio_Redirection::$country_list; ?></td>
+				</tr>
+				<tr>
+					<td>Meta Target URL</td>
+					<td><?php echo Kreacio_Redirection::$target_url; ?></td>
+				</tr>
+			</table>
+		<?php endif;
+	}
+
+	function custom_post()
 	{
 		$labels = array(
 		  'name'               => _x( 'Redirections', 'post type general name' ),
@@ -105,105 +143,65 @@ class Kreacio_Redirection
 		  'labels'        => $labels,
 		  'description'   => 'Holds countries and country specific redirection',
 		  'public'        => true,
+		  'show_ui'				=> true,
+		  'exclude_from_search'	=> false,
+		  'capability_type'			=> "post",
 		  'menu_position' => 5,
+		  'map_meta_cap'	=> true,
+		  'hierarchical'	=> false,
 		  'supports'      => array('title'),
 		  'has_archive'   => true,
+		  'rewrite' => array( 'slug' => 'kred', 'with_front' => true ),
+		  'query_var'			=> true,
 		);
 		register_post_type( $this->post_type, $args );
 	}
+
 	function meta_box($post)
 	{
-	 	add_meta_box( $this->meta_id,									// Meta Box ID
-	 								$this->meta_title,							// Title
-	 								array($this, $this->callback),	// Meta Box Contents
-	 								$this->post_type,								// Post Type
-	 								$this->meta_position,						// Meta Box Placement
-	 								$this->meta_priority );
+		add_meta_box( $this->meta_id,									// Meta Box ID
+									$this->meta_title,							// Title
+									array($this, $this->content),	// Meta Box Contents
+									$this->post_type,								// Post Type
+									$this->meta_position,						// Meta Box Placement
+									$this->meta_priority );
 	}
-	function meta_box_callback($post, $meta_target_url)
+
+	function meta_box_content($post)
 	{
-		$meta_dropdown   = get_post_meta($post->ID, 'country_dropdown', true);
-		$meta_target_url = get_post_meta($post->ID, 'target_url', true);
+		$this->post_meta($post);
 		// wp_nonce_field(plugin_basename(__FILE__), 'kreacio_nonce');
 
-		// Check current page URL
-		$currentURL = 'http';
-	  if ($_SERVER["HTTPS"] == "on") {$currentURL .= "s";} $currentURL .= "://";
-	  if ($_SERVER["SERVER_PORT"] != "80")
-	  	$currentURL .= $_SERVER["SERVER_NAME"].":".$_SERVER["SERVER_PORT"].$_SERVER["REQUEST_URI"];
-	  else
-	  	$currentURL .= $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"];
-
-	  // $pageURL = (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/';
-		
-		$countries = array_map('str_getcsv', file(dirname(__FILE__).'/GeoIPCountry.csv'));
-		list($country_id, $country_name) = $countries;
-		?>
-		
-		<table>
-			<tr>
-				<td><label for="country_dropdown">Country</label></td>
-				<td> : 
-					<select name="country_dropdown" id="country_dropdown">
-						<option value=''<?php selected( $meta_dropdown, '' ); ?>>Default Redirection</option>
-						<?php foreach( $countries as $country ) :
-									$selected = ($meta_dropdown == $country[0]) ? "selected" :''; ?>
-						<option value="<?php echo $country[0]; ?>" <?php echo $selected; ?>>
-							<?php echo $country[1];?>
-						</option>
-						<?php endforeach; ?>
-					</select>
-				</td>
-			</tr>
-			<tr>
-				<td><label for="target_url">Target URL</label></td>
-				<td> : <input type="URL" name="target_url" value="<?php echo $meta_target_url; ?>" placeholder="http://www.targeturl.com" style="width:317px"/></td>
-			</tr>
-		</table>
-		<?php if($mode == 1) : ?>
-			<br/>
-			<table border="1">
-				<tr>
-					<th colspan='2'>TEMP</th>
-				</tr>
-				<tr>
-					<td>IP</td>
-					<td><?php echo $ip; ?></td>
-				</tr>
-				<tr>
-					<td>host</td>
-					<td><?php echo $_SERVER['HTTP_HOST']; ?></td>
-				</tr>
-				<tr>
-					<td>self</td>
-					<td><?php echo $_SERVER['PHP_SELF']; ?></td>
-				</tr>
-				<tr>
-					<td>Country ID / Name</td>
-					<td><?php echo $c_id . " / " . $c_name; ?></td>
-				</tr>
-				<tr>
-					<td>Meta Dropdown</td>
-					<td><?php echo $meta_dropdown; ?></td>
-				</tr>
-				<tr>
-					<td>Meta Target URL</td>
-					<td><?php echo $meta_target_url; ?></td>
-				</tr>
-				<tr>
-					<td>Current URL</td>
-					<td><?php echo $currentURL; ?></td>
-				</tr>
-			</table>
-		<?php endif;
+		// $this->request_url();
+		$this->check_ip();
+		$this->maxmind_geo(Kreacio_Redirection::$ip);
+		$this->read_csv();
+		$this->content(Kreacio_Redirection::$countries);
 	}
-	function meta_box_save()
-	{
-		global $post;
-		if( isset($_POST['country_dropdown']) )
-			update_post_meta( $post->ID, 'country_dropdown', esc_attr( $_POST['country_dropdown'] ));
 
-		if( isset($_POST['target_url']) )
-			update_post_meta($post->ID, 'target_url', $_POST['target_url']);
+	function post_meta($post)
+	{
+		Kreacio_Redirection::$country_list 	= get_post_meta($post->ID, 'country_list', true);
+		Kreacio_Redirection::$target_url	= get_post_meta($post->ID, 'target_url', true);
+	}
+
+	function meta_box_save($post_id)
+	{
+		if ( !isset( $_POST['meta_box_nonce'] ) || !wp_verify_nonce( $_POST['meta_box_nonce'], basename( __FILE__ ) ) )
+			return;
+
+		// return if autosave
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE )
+			return;
+
+		// Check the user's permissions.
+		if ( ! current_user_can( 'edit_post', $post_id ) )
+			return;
+
+		if( isset($_REQUEST['country_list']) )
+			update_post_meta($post_id, 'country_list', sanitize_text_field( $_POST['country_list'] ));
+
+		if( isset($_REQUEST['target_url']) )
+			update_post_meta($post_id, 'target_url', sanitize_text_field( $_POST['target_url'] ));
 	}
 }
